@@ -1,5 +1,5 @@
 {
-    "apikey": "xai-6jYh0CjmCcWvi4ZjB1V6Jmiq9ZFyMTkgyEARHUSNQLHHEY81rRCAPW5xXpQZVa7I5G7LgjnA6Ghjk2zZ",
+    "apikey": "",
     "base_url": "https://api.x.ai/v1",
     "model": "grok-beta",
     "text_complete_number": 150,
