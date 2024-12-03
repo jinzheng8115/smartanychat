@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext, simpledialog
 import webbrowser
@@ -156,6 +157,16 @@ class UIManager:
         # 加载新选择的API类型配置
         api_type = self.api_type.get()
         api_config = self.config_manager.get_api_config(api_type)
+        
+        # 只更新API相关的配置，保持其他配置不变
+        config = self.config_manager.get_config()
+        config['api_type'] = api_type
+        config['apikey'] = api_config.get('apikey', '')
+        config['base_url'] = api_config.get('base_url', '')
+        config['model'] = api_config.get('model', '')
+        
+        # 保存更新后的配置
+        self.config_manager.save_config(config)
         
         # 更新界面
         self.apikey.delete(0, tk.END)

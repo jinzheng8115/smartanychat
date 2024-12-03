@@ -75,7 +75,7 @@ class OllamaAPI:
         """
         发送聊天消息并获取回复
         :param user_input: 用户输入的消息
-        :param options: 参数字典，包含temperature和num_ctx等参数
+        :param options: 参数字典，包含temperature和num_predict等参数
         :return: AI的回复文本
         """
         if not self.chat_session:
@@ -96,7 +96,7 @@ class OllamaAPI:
             
         # 使用角色特定的参数，如果没有则使用默认值
         temperature = role.get('temperature', config.get('temperature', 0.7))
-        max_tokens = role.get('text_complete_number', config.get('text_complete_number', 2000))
+        max_tokens = role.get('max_tokens', config.get('max_tokens', 150))
             
         self.logger.info(f"发送聊天请求 - 角色: {current_role}, temperature: {temperature}, max_tokens: {max_tokens}")
         
@@ -104,7 +104,7 @@ class OllamaAPI:
             # 如果没有提供options，使用角色配置的参数
             if options is None:
                 options = {
-                    "num_ctx": int(max_tokens),
+                    "num_predict": int(max_tokens),  # 使用 max_tokens 作为输出长度限制
                     "mirostat": 0,
                     "mirostat_eta": float(temperature)
                 }

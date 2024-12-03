@@ -62,10 +62,16 @@ class SmartCopilot:
             
             if current_role_config:
                 api_type = config.get('api_type', 'OpenAI兼容')
+                model = config.get('model')
+                base_url = config.get('base_url')
+                
+                # 记录详细的配置信息
+                self.logger.info(f"当前配置 - API类型: {api_type}, 模型: {model}, 角色: {current_role}")
+                self.logger.info(f"API地址: {base_url}")
                 
                 if api_type == 'Ollama':
                     self.chat_session = self.api_client.set_chat_session(
-                        model=config.get('model'),
+                        model=model,
                         system_prompt={
                             "role": "system",
                             "content": current_role_config.get('input_prompt', ''),
@@ -77,14 +83,14 @@ class SmartCopilot:
                 else:  # OpenAI 或 OpenAI兼容模式
                     self.chat_session = OAIChatSession(
                         api_key=config.get('apikey'),
-                        base_url=config.get('base_url'),
-                        model=config.get('model'),
+                        base_url=base_url,
+                        model=model,
                         system_prompt={
                             "role": "system",
                             "content": current_role_config.get('input_prompt', '')
                         }
                     )
-                self.logger.info(f"设置默认聊天会话 - 角色: {current_role}")
+                self.logger.info(f"聊天会话已初始化完成")
             else:
                 self.logger.warning(f"未找到角色配置: {current_role}")
                 
@@ -124,48 +130,34 @@ class SmartCopilot:
             text_complete_number = role.get('text_complete_number', config['text_complete_number']) if role else config['text_complete_number']
             temperature = role.get('temperature', config['temperature']) if role else config['temperature']
 
+            self.logger.info(f"发送聊天请求 - 角色: {current_role}, temperature: {temperature}, max_tokens: {text_complete_number}")
+
             # 调用API获取补全
-            try:
-                api_type = config.get('api_type', 'OpenAI兼容')
-                
-                if api_type == 'Ollama':
-                    response = self.api_client.chat(
-                        selected_text,
-                        {
-                            "num_ctx": int(text_complete_number),
-                            "mirostat": 0,
-                            "mirostat_eta": float(temperature)
-                        }
-                    )
-                else:  # OpenAI 或 OpenAI兼容模式
-                    response = self.chat_session.chat(selected_text)
-                    
-                # 写入补全结果
-                if response and not response.startswith(("发生错误", "request error", "API请求错误")):
-                    ClipboardManager.write_text(response)
-                    self.last_response = response  # 更新最后的响应
-                    self.logger.info(f"文本补全完成 - 使用角色 {current_role} 的配置")
-                else:
-                    self.logger.error(f"文本补全返回错误: {response}")
-
-            except Exception as e:
-                error_msg = str(e)
-                # 显示友好的错误提示
-                from tkinter import messagebox
-                messagebox.showerror(
-                    "请求错误",
-                    f"与 Ollama 通信时发生错误：\n{error_msg}\n\n"
-                    "可能的原因：\n"
-                    "1. 系统资源（内存/GPU）不足\n"
-                    "2. Ollama 服务异常\n"
-                    "3. 模型加载失败\n\n"
-                    "建议：\n"
-                    "1. 检查系统资源使用情况\n"
-                    "2. 重启 Ollama 服务\n"
-                    "3. 尝试使用其他模型"
+            api_type = config.get('api_type', 'OpenAI兼容')
+            
+            if api_type == 'Ollama':
+                response = self.api_client.chat(
+                    selected_text,
+                    {
+                        "num_ctx": int(text_complete_number),
+                        "mirostat": 0,
+                        "mirostat_eta": float(temperature)
+                    }
                 )
-                self.logger.error(f"文本补全失败: {e}")
-
+            else:  # OpenAI 或 OpenAI兼容模式
+                response = self.chat_session.chat(
+                    selected_text,
+                    temperature=float(temperature),
+                    max_tokens=int(text_complete_number)
+                )
+            
+            # 更新最后的响应
+            self.last_response = response
+            
+            # 输出到剪贴板
+            ClipboardManager.write_text(response)
+            self.logger.info("文本补全完成")
+            
         except Exception as e:
             self.logger.error(f"文本补全失败: {e}")
 
@@ -187,11 +179,11 @@ class SmartCopilot:
 
     def continue_output(self):
         """继续输出功能"""
-        if not self.last_response:
-            self.logger.warning("没有可继续的内容")
-            return
-            
         try:
+            if not self.last_response:
+                self.logger.warning("没有上一次的回复可以继续")
+                return
+
             self.logger.info("开始继续生成")
             # 构建继续输出的提示
             continue_prompt = "请继续上文未完成的内容"
@@ -208,6 +200,8 @@ class SmartCopilot:
             text_complete_number = role.get('text_complete_number', config['text_complete_number']) if role else config['text_complete_number']
             temperature = role.get('temperature', config['temperature']) if role else config['temperature']
 
+            self.logger.info(f"继续生成 - 角色: {current_role}, temperature: {temperature}, max_tokens: {text_complete_number}")
+
             # 调用API继续生成
             api_type = config.get('api_type', 'OpenAI兼容')
             
@@ -221,7 +215,11 @@ class SmartCopilot:
                     }
                 )
             else:  # OpenAI 或 OpenAI兼容模式
-                response = self.chat_session.chat(continue_prompt)
+                response = self.chat_session.chat(
+                    continue_prompt,
+                    temperature=float(temperature),
+                    max_tokens=int(text_complete_number)
+                )
                 
             # 更新最后的响应
             self.last_response = response
