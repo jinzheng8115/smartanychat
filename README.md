@@ -7,9 +7,6 @@
 > 编写文档的好助手  
 
 ## 部署方法
-```
-git clone https://github.com/hmhm2022/ChatAnywhere-2
-cd ChatAnywhere-2
 pip install -r requirements.txt
 python main.py
 
